@@ -48,6 +48,7 @@ SpaceLookup::SpaceLookup(QWidget* parent)
 	// 初始化Log
 	SpaceLookupLogger = spdlog::basic_logger_mt("SpaceLookup", L"SpaceLookup.log");
 	spdlog::set_default_logger(SpaceLookupLogger);
+	spdlog::set_level(spdlog::level::info);
 	spdlog::critical(L"Program started!");
 
 	// 初始化槽
@@ -70,37 +71,51 @@ void SpaceLookup::onVolSelChanged(const QString& Text)
 {
 	ui.statusBar->showMessage("Running,please wait...");
 
-	auto SearchRoot = Text.toStdString();
-	auto& Space = AllSpaces[SearchRoot[0]];
-	uint16_t Run = 1;
-	uintmax_t TotalSize = 0;
-
-	if (Space.empty()) ResolveDir(Space, SearchRoot);
-
-	for (const auto& Item : Space[0])
-	{
-		TotalSize += Item->Size;
-	}
-
+	ui.BtnBack->setEnabled(false);
+	ui.BtnOpen->setEnabled(false);
+	ui.ComboVolSel->setEnabled(false);
 	Series->clear();
 
-	for (const auto& Item : Space[0])
-	{
-		auto Slice = new QPieSlice(QString::fromStdWString(Item->FileObj.path().filename()), (double)Item->Size / TotalSize, this);
-		Slice->setLabelVisible(false);
-		Slice->setColor(QColor::fromHsv(259.0 * Run / Space[0].size(), Random() % 255, Random() % 255));
-		Slice->setExploded(true);
-		Slice->setExplodeDistanceFactor(0.1);
-		Slice->setProperty("current_item", (ULONG_PTR)Item);
-		Slice->setProperty("parent_item", (ULONG_PTR)nullptr);
-		Series->append(Slice);
-		++Run;
-	}
+	auto SearchRoot = Text.toStdString();
+	auto& Space = AllSpaces[SearchRoot[0]];
 
-	ui.BtnBack->setEnabled(false);
-	ui.BtnOpen->setEnabled(true);
+	auto WorkThread = QThread::create([this, &Space, SearchRoot]()
+		{
+			if (Space.empty()) ResolveDir(Space, SearchRoot);
+		});
+	WorkThread->start();
 
-	ui.statusBar->showMessage("Ready");
+	connect(WorkThread, &QThread::finished, this, [this, &Space, SearchRoot]()
+		{
+			auto& Space = AllSpaces[SearchRoot[0]];
+			uint16_t Run = 1;
+			uintmax_t TotalSize = 0;
+
+			for (const auto& Item : Space[0])
+			{
+				TotalSize += Item->Size;
+			}
+
+			Series->clear();
+
+			for (const auto& Item : Space[0])
+			{
+				auto Slice = new QPieSlice(QString::fromStdWString(Item->FileObj.path().filename()), (double)Item->Size / TotalSize, this);
+				Slice->setLabelVisible(false);
+				Slice->setColor(QColor::fromHsv(259.0 * Run / Space[0].size(), Random() % 255, Random() % 255));
+				Slice->setExploded(true);
+				Slice->setExplodeDistanceFactor(0.1);
+				Slice->setProperty("current_item", (ULONG_PTR)Item);
+				Slice->setProperty("parent_item", (ULONG_PTR)nullptr);
+				Series->append(Slice);
+				++Run;
+			}
+
+			ui.ComboVolSel->setEnabled(true);
+			ui.BtnOpen->setEnabled(true);
+
+			ui.statusBar->showMessage("Ready");
+		});
 }
 
 void SpaceLookup::onPieSliceHovered(QPieSlice* Slice, bool state)
@@ -140,6 +155,9 @@ void SpaceLookup::onPieSliceClicked(QPieSlice* Slice)
 
 	if (!CurrentItem->BlinkItems.empty())
 	{
+		ui.BtnBack->setEnabled(false);
+		ui.ComboVolSel->setEnabled(false);
+
 		uint16_t Run = 1;
 		Series->clear();
 
@@ -157,6 +175,7 @@ void SpaceLookup::onPieSliceClicked(QPieSlice* Slice)
 		}
 
 		ui.BtnBack->setEnabled(true);
+		ui.ComboVolSel->setEnabled(true);
 	}
 
 	ui.statusBar->showMessage("Ready");
@@ -213,6 +232,8 @@ void SpaceLookup::onBtnBackPressed()
 	auto ParentItem = (SpaceItem*)Series->slices().first()->property("parent_item").value<ULONG_PTR>();
 	if (ParentItem)
 	{
+		ui.ComboVolSel->setEnabled(false);
+
 		uintmax_t TotalSize = 0;
 		auto CurrentList = ParentItem->FlinkItem ? &ParentItem->FlinkItem->BlinkItems : nullptr;
 		TotalSize = ParentItem->FlinkItem ? ParentItem->FlinkItem->Size : 0;
@@ -246,6 +267,8 @@ void SpaceLookup::onBtnBackPressed()
 			Series->append(Slice);
 			++Run;
 		}
+
+		ui.ComboVolSel->setEnabled(true);
 	}
 
 	ui.statusBar->showMessage("Ready");
