@@ -1,5 +1,8 @@
 <RCC>
     <qresource prefix="/SpaceLookup">
         <file>logo.jpg</file>
+        <file>AboutMe.html</file>
+        <file>alipay.jpg</file>
+        <file>wechat.png</file>
     </qresource>
 </RCC>

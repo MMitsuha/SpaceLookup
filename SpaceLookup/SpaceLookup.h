@@ -31,6 +31,8 @@ private Q_SLOTS:
 	void onPieSliceHovered(QPieSlice* Slice, bool state);
 	void onPieSliceClicked(QPieSlice* Slice);
 	void onAboutMeTriggered();
+	void onAboutProgramTriggered();
+	void onDonateTriggered();
 	void onBtnBackPressed();
 	void onBtnOpenPressed();
 };

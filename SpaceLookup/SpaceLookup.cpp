@@ -1,5 +1,11 @@
 #include "stdafx.h"
 #include "SpaceLookup.h"
+#include "Donate.h"
+
+#define __WIDE(x) L##x
+#define L(x) __WIDE(x)
+
+#define SL_VER L"0.0.0.3"
 
 SpaceLookup::SpaceLookup(QWidget* parent)
 	: QMainWindow(parent)
@@ -51,6 +57,8 @@ SpaceLookup::SpaceLookup(QWidget* parent)
 	connect(ui.BtnBack, SIGNAL(pressed()), this, SLOT(onBtnBackPressed()));
 	connect(ui.BtnOpen, SIGNAL(pressed()), this, SLOT(onBtnOpenPressed()));
 	connect(ui.actionAbout_Me, SIGNAL(triggered()), this, SLOT(onAboutMeTriggered()));
+	connect(ui.actionAbout_Program, SIGNAL(triggered()), this, SLOT(onAboutProgramTriggered()));
+	connect(ui.actionDonate, SIGNAL(triggered()), this, SLOT(onDonateTriggered()));
 
 	ui.BtnBack->setEnabled(false);
 	ui.BtnOpen->setEnabled(false);
@@ -104,7 +112,7 @@ void SpaceLookup::onPieSliceHovered(QPieSlice* Slice, bool state)
 	if (state)
 	{
 		Slice->setLabelVisible(true);
-		Slice->setBorderWidth(Slice->borderWidth() / 10);
+		Slice->setExplodeDistanceFactor(0.2);
 
 		auto Item = (SpaceItem*)Slice->property("current_item").value<ULONG_PTR>();
 		auto TipString = fmt::format(L"Name:{}\nSize:{:.2f} MB\nFileCount:{}\nDirCount:{}", Item->FileObj.path().filename().wstring(), (double)Item->Size / 1024 / 1024, Item->FileCount, Item->DirCount);
@@ -116,7 +124,7 @@ void SpaceLookup::onPieSliceHovered(QPieSlice* Slice, bool state)
 	else
 	{
 		Slice->setLabelVisible(false);
-		Slice->setBorderWidth(Slice->borderWidth() * 10);
+		Slice->setExplodeDistanceFactor(0.1);
 
 		QToolTip::hideText();
 
@@ -129,23 +137,27 @@ void SpaceLookup::onPieSliceClicked(QPieSlice* Slice)
 	ui.statusBar->showMessage("Running,please wait...");
 
 	auto CurrentItem = (SpaceItem*)Slice->property("current_item").value<ULONG_PTR>();
-	uint16_t Run = 1;
-	Series->clear();
 
-	for (const auto& Item : CurrentItem->BlinkItems)
+	if (!CurrentItem->BlinkItems.empty())
 	{
-		auto Slice = new QPieSlice(QString::fromStdWString(Item->FileObj.path().filename()), (double)Item->Size / CurrentItem->Size, this);
-		Slice->setLabelVisible(false);
-		Slice->setColor(QColor::fromHsv(259.0 * Run / CurrentItem->BlinkItems.size(), Random() % 255, Random() % 255));
-		Slice->setExploded(true);
-		Slice->setExplodeDistanceFactor(0.1);
-		Slice->setProperty("current_item", (ULONG_PTR)Item);
-		Slice->setProperty("parent_item", (ULONG_PTR)CurrentItem);
-		Series->append(Slice);
-		++Run;
-	}
+		uint16_t Run = 1;
+		Series->clear();
 
-	ui.BtnBack->setEnabled(true);
+		for (const auto& Item : CurrentItem->BlinkItems)
+		{
+			auto Slice = new QPieSlice(QString::fromStdWString(Item->FileObj.path().filename()), (double)Item->Size / CurrentItem->Size, this);
+			Slice->setLabelVisible(false);
+			Slice->setColor(QColor::fromHsv(259.0 * Run / CurrentItem->BlinkItems.size(), Random() % 255, Random() % 255));
+			Slice->setExploded(true);
+			Slice->setExplodeDistanceFactor(0.1);
+			Slice->setProperty("current_item", (ULONG_PTR)Item);
+			Slice->setProperty("parent_item", (ULONG_PTR)CurrentItem);
+			Series->append(Slice);
+			++Run;
+		}
+
+		ui.BtnBack->setEnabled(true);
+	}
 
 	ui.statusBar->showMessage("Ready");
 }
@@ -154,13 +166,44 @@ void SpaceLookup::onAboutMeTriggered()
 {
 	QFont Font;
 	QMessageBox AboutMe;
+	QFile Html(":/SpaceLookup/AboutMe.html");
+	QString HtmlString = "Error when opening html file!";
+	if (Html.open(QIODevice::ReadOnly | QIODevice::Text))
+		HtmlString = Html.readAll();
+
 	Font.setBold(true);
+	Font.setPointSize(15);
+	AboutMe.setTextFormat(Qt::AutoText);
 	AboutMe.setWindowTitle("About Me");
-	AboutMe.setText("Author:Mitsuha\n\nPowered by Qt\n\nThanks for using!");
+	AboutMe.setText(HtmlString);
 	AboutMe.setStyleSheet("QLabel{min-width: 300px;}");
 	AboutMe.setIconPixmap(QPixmap(":/SpaceLookup/logo.jpg"));
 	AboutMe.setFont(Font);
 	AboutMe.exec();
+}
+
+void SpaceLookup::onAboutProgramTriggered()
+{
+	QFont Font;
+	QMessageBox AboutProgram;
+
+	Font.setBold(true);
+	Font.setPointSize(10);
+	AboutProgram.setTextFormat(Qt::AutoText);
+	AboutProgram.setWindowTitle("About Program");
+	AboutProgram.setText(QString::fromStdWString(fmt::format(L"Version:{}\n\nBuild Time:{} {} GMT+0800", SL_VER, L(__DATE__), L(__TIME__))));
+	AboutProgram.setStyleSheet("QLabel{min-width: 400px;}");
+	AboutProgram.setFont(Font);
+	AboutProgram.exec();
+}
+
+void SpaceLookup::onDonateTriggered()
+{
+	auto DonateWindow = new Donate(this);
+	DonateWindow->setWindowTitle("Donate Me");
+	DonateWindow->setAttribute(Qt::WA_DeleteOnClose);
+	DonateWindow->setModal(true);
+	DonateWindow->show();
 }
 
 void SpaceLookup::onBtnBackPressed()

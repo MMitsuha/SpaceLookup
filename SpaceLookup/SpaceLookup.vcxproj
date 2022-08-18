@@ -137,12 +137,14 @@
     <QtRcc Include="SpaceLookup.qrc" />
     <QtUic Include="SpaceLookup.ui" />
     <QtMoc Include="SpaceLookup.h" />
+    <ClCompile Include="Donate.cpp" />
     <ClCompile Include="FileSearcher.cpp" />
     <ClCompile Include="SpaceLookup.cpp" />
     <ClCompile Include="main.cpp" />
     <None Include="..\README.md" />
     <None Include="SpaceLookup.ico" />
     <ResourceCompile Include="SpaceLookup.rc" />
+    <QtMoc Include="Donate.h" />
     <ClInclude Include="FileSearcher.h" />
     <ClInclude Include="stdafx.h" />
     <ClCompile Include="stdafx.cpp">

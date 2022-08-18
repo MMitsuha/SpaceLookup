@@ -18,6 +18,7 @@
 #include <QPixMap>
 //#include <boost/serialization/map.hpp>
 //#include <boost/serialization/array.hpp>
+//#include <boost/serialization/list.hpp>
 //#include <boost/serialization/vector.hpp>
 //#include <boost/serialization/serialization.hpp>
 //#include <boost/archive/text_oarchive.hpp>
