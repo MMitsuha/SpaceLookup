@@ -9,6 +9,7 @@ struct SpaceItem
 	std::filesystem::directory_entry FileObj;
 	uintmax_t Size;
 	uintmax_t FileCount;
+	uintmax_t DirCount;
 };
 
 using SpaceInfo = std::map<SIZE_T, std::list<SpaceItem*>>;

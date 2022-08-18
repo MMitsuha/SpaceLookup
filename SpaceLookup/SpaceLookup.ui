@@ -10,10 +10,16 @@
     <height>622</height>
    </rect>
   </property>
+  <property name="mouseTracking">
+   <bool>false</bool>
+  </property>
   <property name="windowTitle">
    <string>SpaceLookup</string>
   </property>
   <widget class="QWidget" name="centralWidget">
+   <property name="mouseTracking">
+    <bool>false</bool>
+   </property>
    <layout class="QHBoxLayout" name="horizontalLayout_2">
     <item>
      <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -27,7 +33,11 @@
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="ComboVolSel"/>
+         <widget class="QComboBox" name="ComboVolSel">
+          <property name="mouseTracking">
+           <bool>false</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
@@ -59,6 +69,9 @@
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
          <widget class="QPushButton" name="BtnBack">
+          <property name="mouseTracking">
+           <bool>false</bool>
+          </property>
           <property name="text">
            <string>Back</string>
           </property>
@@ -79,6 +92,9 @@
         </item>
         <item>
          <widget class="QPushButton" name="BtnOpen">
+          <property name="mouseTracking">
+           <bool>false</bool>
+          </property>
           <property name="text">
            <string>Open</string>
           </property>
@@ -98,6 +114,9 @@
      <width>925</width>
      <height>21</height>
     </rect>
+   </property>
+   <property name="mouseTracking">
+    <bool>false</bool>
    </property>
    <widget class="QMenu" name="menuAbout">
     <property name="title">

@@ -35,6 +35,7 @@ SpaceLookup::SpaceLookup(QWidget* parent)
 	ChartView = new QChartView(this);
 	ChartView->setChart(Chart);
 	ChartView->setRenderHint(QPainter::Antialiasing);
+	ChartView->show();
 
 	ui.PieLayout->insertWidget(0, ChartView, 1);
 
@@ -91,8 +92,6 @@ void SpaceLookup::onVolSelChanged(const QString& Text)
 	ui.BtnBack->setEnabled(false);
 	ui.BtnOpen->setEnabled(true);
 
-	ChartView->show();
-
 	ui.statusBar->showMessage("Ready");
 }
 
@@ -108,6 +107,9 @@ void SpaceLookup::onPieSliceHovered(QPieSlice* Slice, bool state)
 		Slice->setBorderWidth(Slice->borderWidth() / 10);
 
 		auto Item = (SpaceItem*)Slice->property("current_item").value<ULONG_PTR>();
+		auto TipString = fmt::format(L"Name:{}\nSize:{:.2f} MB\nFileCount:{}\nDirCount:{}", Item->FileObj.path().filename().wstring(), (double)Item->Size / 1024 / 1024, Item->FileCount, Item->DirCount);
+		QToolTip::showText(QCursor().pos(), QString::fromStdWString(TipString), this);
+
 		auto ShowString = fmt::format(L"{} | {}", Item->FileObj.path().filename().wstring(), Item->FileObj.path().wstring());
 		ui.statusBar->showMessage(QString::fromStdWString(ShowString));
 	}
@@ -115,6 +117,8 @@ void SpaceLookup::onPieSliceHovered(QPieSlice* Slice, bool state)
 	{
 		Slice->setLabelVisible(false);
 		Slice->setBorderWidth(Slice->borderWidth() * 10);
+
+		QToolTip::hideText();
 
 		ui.statusBar->showMessage("Ready");
 	}
