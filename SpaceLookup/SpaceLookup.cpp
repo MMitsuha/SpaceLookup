@@ -18,6 +18,7 @@ SpaceLookup::SpaceLookup(QWidget* parent)
 			ui.ComboVolSel->addItem(QString::fromStdString(VolStr));
 		}
 	}
+	ui.ComboVolSel->setCurrentIndex(-1);
 
 	// 初始化PieChart
 	Series = new QPieSeries(this);
@@ -46,7 +47,12 @@ SpaceLookup::SpaceLookup(QWidget* parent)
 	connect(ui.ComboVolSel, SIGNAL(currentTextChanged(const QString&)), this, SLOT(onVolSelChanged(const QString&)));
 	connect(Series, SIGNAL(hovered(QPieSlice*, bool)), this, SLOT(onPieSliceHovered(QPieSlice*, bool)));
 	connect(Series, SIGNAL(clicked(QPieSlice*)), this, SLOT(onPieSliceClicked(QPieSlice*)));
+	connect(ui.BtnBack, SIGNAL(pressed()), this, SLOT(onBtnBackPressed()));
+	connect(ui.BtnOpen, SIGNAL(pressed()), this, SLOT(onBtnOpenPressed()));
 	connect(ui.actionAbout_Me, SIGNAL(triggered()), this, SLOT(onAboutMeTriggered()));
+
+	ui.BtnBack->setEnabled(false);
+	ui.BtnOpen->setEnabled(false);
 
 	ui.statusBar->showMessage("Ready");
 }
@@ -56,11 +62,11 @@ void SpaceLookup::onVolSelChanged(const QString& Text)
 	ui.statusBar->showMessage("Running,please wait...");
 
 	auto SearchRoot = Text.toStdString();
-	Free(Space);
-	ResolveDir(Space, SearchRoot);
-
+	auto& Space = AllSpaces[SearchRoot[0]];
 	uint16_t Run = 1;
 	uintmax_t TotalSize = 0;
+
+	if (Space.empty()) ResolveDir(Space, SearchRoot);
 
 	for (const auto& Item : Space[0])
 	{
@@ -71,15 +77,19 @@ void SpaceLookup::onVolSelChanged(const QString& Text)
 
 	for (const auto& Item : Space[0])
 	{
-		auto Slice = new QPieSlice(QString::fromStdWString(Item->Name), (double)Item->Size / TotalSize, this);
+		auto Slice = new QPieSlice(QString::fromStdWString(Item->FileObj.path().filename()), (double)Item->Size / TotalSize, this);
 		Slice->setLabelVisible(false);
 		Slice->setColor(QColor::fromHsv(259.0 * Run / Space[0].size(), Random() % 255, Random() % 255));
 		Slice->setExploded(true);
 		Slice->setExplodeDistanceFactor(0.1);
-		Slice->setProperty("filesearcher_item", (uint64_t)Item);
+		Slice->setProperty("current_item", (ULONG_PTR)Item);
+		Slice->setProperty("parent_item", (ULONG_PTR)nullptr);
 		Series->append(Slice);
 		++Run;
 	}
+
+	ui.BtnBack->setEnabled(false);
+	ui.BtnOpen->setEnabled(true);
 
 	ChartView->show();
 
@@ -97,8 +107,9 @@ void SpaceLookup::onPieSliceHovered(QPieSlice* Slice, bool state)
 		Slice->setLabelVisible(true);
 		Slice->setBorderWidth(Slice->borderWidth() / 10);
 
-		auto Item = (SpaceItem*)Slice->property("filesearcher_item").value<uint64_t>();
-		ui.statusBar->showMessage(QString::fromStdWString(Item->Name));
+		auto Item = (SpaceItem*)Slice->property("current_item").value<ULONG_PTR>();
+		auto ShowString = fmt::format(L"{} | {}", Item->FileObj.path().filename().wstring(), Item->FileObj.path().wstring());
+		ui.statusBar->showMessage(QString::fromStdWString(ShowString));
 	}
 	else
 	{
@@ -113,29 +124,24 @@ void SpaceLookup::onPieSliceClicked(QPieSlice* Slice)
 {
 	ui.statusBar->showMessage("Running,please wait...");
 
-	auto ParentItem = (SpaceItem*)Slice->property("filesearcher_item").value<uint64_t>();
-
+	auto CurrentItem = (SpaceItem*)Slice->property("current_item").value<ULONG_PTR>();
 	uint16_t Run = 1;
-	uintmax_t TotalSize = 0;
-
-	for (const auto& Item : ParentItem->BlinkItems)
-	{
-		TotalSize += Item->Size;
-	}
-
 	Series->clear();
 
-	for (const auto& Item : ParentItem->BlinkItems)
+	for (const auto& Item : CurrentItem->BlinkItems)
 	{
-		auto Slice = new QPieSlice(QString::fromStdWString(Item->Name), (double)Item->Size / TotalSize, this);
+		auto Slice = new QPieSlice(QString::fromStdWString(Item->FileObj.path().filename()), (double)Item->Size / CurrentItem->Size, this);
 		Slice->setLabelVisible(false);
-		Slice->setColor(QColor::fromHsv(259.0 * Run / ParentItem->BlinkItems.size(), Random() % 255, Random() % 255));
+		Slice->setColor(QColor::fromHsv(259.0 * Run / CurrentItem->BlinkItems.size(), Random() % 255, Random() % 255));
 		Slice->setExploded(true);
 		Slice->setExplodeDistanceFactor(0.1);
-		Slice->setProperty("filesearcher_item", (uint64_t)Item);
+		Slice->setProperty("current_item", (ULONG_PTR)Item);
+		Slice->setProperty("parent_item", (ULONG_PTR)CurrentItem);
 		Series->append(Slice);
 		++Run;
 	}
+
+	ui.BtnBack->setEnabled(true);
 
 	ui.statusBar->showMessage("Ready");
 }
@@ -151,6 +157,67 @@ void SpaceLookup::onAboutMeTriggered()
 	AboutMe.setIconPixmap(QPixmap(":/SpaceLookup/logo.jpg"));
 	AboutMe.setFont(Font);
 	AboutMe.exec();
+}
+
+void SpaceLookup::onBtnBackPressed()
+{
+	ui.statusBar->showMessage("Running,please wait...");
+
+	auto ParentItem = (SpaceItem*)Series->slices().first()->property("parent_item").value<ULONG_PTR>();
+	if (ParentItem)
+	{
+		uintmax_t TotalSize = 0;
+		auto CurrentList = ParentItem->FlinkItem ? &ParentItem->FlinkItem->BlinkItems : nullptr;
+		TotalSize = ParentItem->FlinkItem ? ParentItem->FlinkItem->Size : 0;
+		if (!CurrentList)
+		{
+			auto RootPath = ui.ComboVolSel->currentText().toStdString();
+			CurrentList = &AllSpaces[RootPath[0]][0];
+
+			ui.BtnBack->setEnabled(false);
+		}
+		if (!TotalSize)
+		{
+			for (const auto& Item : *CurrentList)
+			{
+				TotalSize += Item->Size;
+			}
+		}
+
+		uint16_t Run = 1;
+		Series->clear();
+
+		for (const auto& Item : *CurrentList)
+		{
+			auto Slice = new QPieSlice(QString::fromStdWString(Item->FileObj.path().filename()), (double)Item->Size / TotalSize, this);
+			Slice->setLabelVisible(false);
+			Slice->setColor(QColor::fromHsv(259.0 * Run / CurrentList->size(), Random() % 255, Random() % 255));
+			Slice->setExploded(true);
+			Slice->setExplodeDistanceFactor(0.1);
+			Slice->setProperty("current_item", (ULONG_PTR)Item);
+			Slice->setProperty("parent_item", (ULONG_PTR)ParentItem->FlinkItem);
+			Series->append(Slice);
+			++Run;
+		}
+	}
+
+	ui.statusBar->showMessage("Ready");
+}
+
+void SpaceLookup::onBtnOpenPressed()
+{
+	ui.statusBar->showMessage("Running,please wait...");
+
+	std::wstring OpenPath;
+	auto ParentItem = (SpaceItem*)Series->slices().first()->property("parent_item").value<ULONG_PTR>();
+	if (ParentItem)
+		OpenPath = ParentItem->FileObj.path().wstring();
+	else
+		OpenPath = ui.ComboVolSel->currentText().toStdWString();
+
+	::ShellExecuteW((HWND)this->winId(), L"explore", OpenPath.c_str(), nullptr, nullptr, SW_SHOW);
+
+	ui.statusBar->showMessage("Ready");
 }
 
 SpaceLookup::~SpaceLookup()

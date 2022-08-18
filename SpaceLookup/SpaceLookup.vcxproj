@@ -140,6 +140,7 @@
     <ClCompile Include="FileSearcher.cpp" />
     <ClCompile Include="SpaceLookup.cpp" />
     <ClCompile Include="main.cpp" />
+    <None Include="..\README.md" />
     <None Include="SpaceLookup.ico" />
     <ResourceCompile Include="SpaceLookup.rc" />
     <ClInclude Include="FileSearcher.h" />

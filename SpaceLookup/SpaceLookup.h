@@ -15,7 +15,7 @@ public:
 	~SpaceLookup();
 
 private:
-	SpaceInfo Space;
+	std::map<char, SpaceInfo> AllSpaces;
 	std::bitset<32> Volumes;
 	std::default_random_engine Random;
 	std::shared_ptr<spdlog::logger> SpaceLookupLogger;
@@ -31,4 +31,6 @@ private Q_SLOTS:
 	void onPieSliceHovered(QPieSlice* Slice, bool state);
 	void onPieSliceClicked(QPieSlice* Slice);
 	void onAboutMeTriggered();
+	void onBtnBackPressed();
+	void onBtnOpenPressed();
 };

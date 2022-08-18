@@ -9,7 +9,8 @@ void ResolveDirInternal(SpaceInfo& Space, const std::filesystem::path& DirPath, 
 	{
 		try
 		{
-			auto Item = new SpaceItem{ ParentItem, {},std::move(DirEntry.path().filename()), DirEntry.file_size() };
+			auto FileSize = DirEntry.file_size();
+			auto Item = new SpaceItem{ ParentItem, {}, std::move(DirEntry), FileSize };
 			if (ParentItem) ParentItem->BlinkItems.push_back(Item);
 			CurrentRing.push_back(Item);
 
@@ -30,7 +31,11 @@ void ResolveDir(SpaceInfo& Space, const std::filesystem::path& DirPath)
 	{
 		for (auto& Item : RingIter->second)
 		{
-			if (Item->FlinkItem) Item->FlinkItem->Size += Item->Size;
+			if (Item->FlinkItem)
+			{
+				Item->FlinkItem->Size += Item->Size;
+				++Item->FlinkItem->FileCount;
+			}
 		}
 	}
 }
